@@ -1,7 +1,11 @@
 
 /* Post Meta */
+#churchfolio{
+    
+}
+
 .churchfolio-option{
-    border-bottom:1px dashed #BBB;
+    border-bottom:1px dashed #C6C6C6;
     padding:10px 0;
 }
 
@@ -13,11 +17,11 @@
     width:100px;
 }
 
-.churchfolio-option input[type=text]{
+.churchfolio-option input[type=text], .churchfolio-option textarea{
     float:left;
     margin-bottom:5px;
     padding:7px;
-    width:40%;
+    width:400px;
 }
 
 .churchfolio-option kbd{
@@ -31,7 +35,30 @@
 }
 
 .churchfolio-option button{
-    margin-left:10px;
-    position:relative;
-    top:4px;
+    background-color: #CACACA;
+    background-image: -moz-linear-gradient(center top , #F9F9F9, #EBEBEB);
+    border:1px solid #E0E0E0;
+    border-radius: 7px;
+    color:#656565;
+    cursor: pointer;
+    font-family: Georgia, sans-serif;
+    margin-left: 5px;
+    padding: 5px 3px;
+    position: relative;
+    top: 2px;
 }
+
+.churchfolio-option button:hover{
+    text-shadow: 0px 1px 3px #B5B5B5;
+}
+
+.churchfolio-option button:active{
+    left:1px;
+    text-shadow: 0px 1px 1px #B5B5B5;
+    top:3px;
+}
+
+#churchfolio .last{
+    border-bottom:none;
+}
+

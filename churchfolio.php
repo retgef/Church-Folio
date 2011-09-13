@@ -22,7 +22,12 @@ class ChurchFolio {
         add_action('init', array($this, 'register_global_assets'));
         add_action('admin_init', array($this, 'register_admin_assets'));
         if(!is_admin()) add_action('init', array($this, 'register_frontend_assets'));
+        add_action('after_setup_theme', array($this, 'check_theme_support'));
+        add_filter('gettext', array($this, 'replace_core_text'));
+        add_filter('ngettext', array($this, 'replace_core_text'));
+        
         add_action('admin_menu', array($this, 'register_meta_box'));
+        add_action('save_post', array($this, 'save_meta'));
         add_action('wp_ajax_get_sermon', array($this, 'get_sermon'));
         add_action('wp_ajax_nopriv_get_sermon', array($this, 'get_sermon'));
     }
@@ -57,7 +62,7 @@ class ChurchFolio {
             'has_archive' => true, 
             'hierarchical' => false,
             'menu_position' => null,
-            'supports' => array('title','editor','thumbnail')
+            'supports' => array('title', 'thumbnail', 'editor')
         ); 
         register_post_type('sermon', $sermon_args);
         
@@ -130,6 +135,8 @@ class ChurchFolio {
             'query_var' => true,
             'rewrite' => array('slug' => 'topics'),
         ));
+        
+        add_image_size('sermon', 720, 480, true);
 
         $this->nonce = wp_create_nonce('churchfolio');
     }
@@ -148,6 +155,22 @@ class ChurchFolio {
         
     }
     
+    function check_theme_support(){
+        
+        if(!current_theme_supports('post-thumbnails'))
+            add_theme_support('post-thumbnails');
+        
+    }
+    
+    function replace_core_text($text){
+        
+        global $post;
+        if('sermon' === $post->post_type)
+            $text = str_ireplace('Featured Image', 'Sermon Graphic', $text);
+            
+        return $text;
+    }
+    
     
     function register_meta_box(){
         
@@ -157,14 +180,21 @@ class ChurchFolio {
     
     
     function render_meta_box(){
+        
         global $post;
         
-        $meta = get_post_custom($post->ID);
+        
+        $meta = get_post_meta($post->ID, '_sermon', true);
         
         $options = array(
+            'description' => array(
+                'name' => __('Description', 'churchfolio'),
+                'description' => __('Enter a brief description of the sermon', 'churchfolio'),
+                'form_type' => 'textarea'
+            ),
             'scripture' => array(
                 'name' => __('Scripture', 'churchfolio'),
-                'description' => __('Enter the main sermon Scripture reference', 'churchfolio'),
+                'description' => __('Enter the sermon Scripture reference', 'churchfolio'),
                 'form_type' => 'text'
             ),
             'audio' => array(
@@ -191,11 +221,17 @@ class ChurchFolio {
             )
         );
         
-        $options_count = count($options);
+        $count = count($options);
+        
+        echo "<div id='churchfolio'>";
         
         foreach($options as $id => $option){
             
-            echo "<div class='churchfolio-option'>";
+            $count--;
+            
+            if($count === 0) $option_class = 'last';
+            
+            echo "<div class='churchfolio-option $option_class'>";
             echo "<label for='$id'>{$option['name']}</label>";
             
             if('text' === $option['form_type'])
@@ -205,8 +241,36 @@ class ChurchFolio {
                 echo "<input type='text' id='$id' name='sermon[$id]' value='{$meta[$id]}' />";
                 
                 $button_text = $option['upload_text'] ? $option['upload_text'] : __('Upload', 'churchfolio');
-                echo "<button type='button' value='{$option['upload_type']}'>$button_text</button>";
+                echo "<button type='button' id='$id' value='{$option['upload_type']}'>$button_text</button>";
+                
+                echo "
+                    <script type='text/javascript'>
+                        jQuery(document).ready(function($){
+    
+                            $('#churchfolio button#$id').click(function() {
+                                formfield = '$id';
+                                console.log(formfield);
+                                tb_show('', 'media-upload.php?&amp;TB_iframe=true');
+                                return false;
+                            });";
+                            
+                            if('audio' === $option['upload_type']){
+                                echo "
+                                    window.send_to_editor = function(html) {
+                                        imgURL = jQuery('img',html).attr('src');
+                                        $('#churchfolio #$id').val(imageURL);
+                                        tb_remove();
+                                    }
+                                ";
+                            }
+                            
+                        echo "});
+                    </script>
+                ";
             }
+            
+            elseif('textarea' === $option['form_type'])
+                echo "<textarea id='$id' name='sermon[$id]' rows='10'>{$meta[$id]}</textarea>";
             
             if($option['description'])
                 echo "<kbd>{$option['description']}</kbd>";
@@ -215,12 +279,14 @@ class ChurchFolio {
             echo "</div>";
         }
         
+        echo "</div>";
+        
     }
     
     function save_meta(){
         
-        if($sermon = $_REQUEST['sermon']){
-            
+        if(isset($_REQUEST['sermon'])){
+            update_post_meta($_REQUEST['post_ID'], '_sermon', $_REQUEST['sermon']);
         }
         
     }
@@ -242,17 +308,18 @@ class ChurchFolio {
         else{ return; }
         
         $sermon_entry = get_post($sermon_id);
-        $sermon_meta = get_post_custom($sermon_id);
+        $sermon_meta = get_post_meta($sermon_id, 'sermon');
         
         $sermon = array(
             'title' => $sermon_entry->post_title,
             'description' => $sermon_entry->post_content,
             'thumb' => get_the_post_thumbnail($sermon_id, 'sermon'),
-            'speaker' => $meta['_sermon-speaker'],
-            'audio' => $meta['_sermon-audio'],
-            'video' => $meta['_sermon-video'],
-            'download' => $meta['_sermon-download'],
-            'purchase' => $meta['_sermon-purchase'],
+            'speaker' => $sermon_meta['speaker'],
+            'audio' => $sermon_meta['audio'],
+            'video' => $sermon_meta['video'],
+            'download' => $sermon_meta['download'],
+            'purchase' => $sermon_meta['purchase'],
+            'scripture' => $sermon_meta['scripture'],
         );
         
         $sermon = json_encode($sermon);
