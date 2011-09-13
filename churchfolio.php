@@ -19,13 +19,15 @@ class ChurchFolio {
         $this->plugin_path = dirname(__FILE__);   
         $this->plugin_url = WP_PLUGIN_URL . '/churchfolio';
         
-        add_action('init', array($this, 'register_assets'));
+        add_action('init', array($this, 'register_global_assets'));
+        add_action('admin_init', array($this, 'register_admin_assets'));
+        if(!is_admin()) add_action('init', array($this, 'register_frontend_assets'));
         add_action('admin_menu', array($this, 'register_meta_box'));
         add_action('wp_ajax_get_sermon', array($this, 'get_sermon'));
         add_action('wp_ajax_nopriv_get_sermon', array($this, 'get_sermon'));
     }
     
-    function register_assets(){
+    function register_global_assets(){
         
         $sermon_labels = array(
             'name' => _x('Sermons', 'post type general name'),
@@ -130,9 +132,20 @@ class ChurchFolio {
         ));
 
         $this->nonce = wp_create_nonce('churchfolio');
+    }
+    
+    function register_admin_assets(){
+        
+        wp_enqueue_style('church-folio-admin-css', $this->plugin_url . '/css/admin-core.css');
+        wp_enqueue_script('church-folio-admin-js', $this->plugin_url . '/js/admin-functions.js', array('jquery'));
+        
+    }
+    
+    function register_frontend_assets(){
         
         wp_enqueue_style('church-folio-css', $this->plugin_url . '/css/core.css');
         wp_enqueue_script('church-folio-js', $this->plugin_url . '/js/functions.js', array('jquery'));
+        
     }
     
     
